@@ -7,6 +7,7 @@ import os
 import termios, sys , tty
 import click
 
+from dataframe_sql import register_temp_table, query
 
 
 def read(fname: str) -> pd.DataFrame:
@@ -15,6 +16,8 @@ def read(fname: str) -> pd.DataFrame:
     df = df.fillna('')
 
     df = df.astype(str)
+
+    reg = register_temp_table(df, fname.replace('.sas7bdat', ''))
 
     return df
 
@@ -152,11 +155,8 @@ def main(fname):
 
         if getch == 'f':
             sql_query= input('sql:')
-            from dataframe_sql import register_temp_table, query
-            
-            register_temp_table(data, "ae")
-            
-            data = query(sql_query)
+            if sql_query is not None and sql_query.strip() != '':
+                data = query(sql_query)
 
 
 if __name__ == '__main__':
