@@ -30,19 +30,16 @@ def get_dimensions(data, column_index=0) -> tuple:
     """
 
     ROW_SIZE = 3 # every row requires 3 lines.
-    COL_SIZE = 6 # every columns has 4 chars in formatting.
+    COL_SIZE = 4 # every columns has 4 chars in formatting.
     
     
     width, height = shutil.get_terminal_size((80, 20))
     
-    column_sizes = get_max_column_sizes(data)
-    column_sizes = column_sizes + COL_SIZE
-
+    column_sizes = get_max_column_sizes(data, COL_SIZE)
     column_sizes = column_sizes[column_index:]
 
     rows = math.floor(height / ROW_SIZE)
     rows = int(rows)
-
 
     col_length = 0
     num_cols = 0
@@ -58,7 +55,7 @@ def get_dimensions(data, column_index=0) -> tuple:
     return rows, num_cols
 
 
-def get_max_column_sizes(df) -> list:
+def get_max_column_sizes(df, col_size=0) -> list:
     """
     Calculates the maximum length of each column in a dataframe.
     """
@@ -70,20 +67,15 @@ def get_max_column_sizes(df) -> list:
         if len(col) > lengths[i]:
             lengths[i] = len(col)
 
+    lengths += col_size
+
     return lengths
-
-
-def page(data, direction=None, amount=None) -> pd.DataFrame:
-
-    if direction is None and amount is None:
-        return data
-
-    return None
     
 
-def display_page(data) -> None:
-
-    #print(data)
+def display_page(data, clear=True) -> None:
+    
+    if clear:
+        clear_screen()
 
     tt.print(
         data.values.tolist(),
@@ -91,74 +83,98 @@ def display_page(data) -> None:
 
 
 def char_input() -> str:
-   fd = sys.stdin.fileno()
-   old_settings = termios.tcgetattr(fd)
-   try:
-      tty.setraw(fd)
-      ch = sys.stdin.read(1)     #This number represents the length
-   finally:
-      termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-   return ch
+
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+
+    try:
+        tty.setraw(fd)
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    return ch
 
 
-def cls() -> None:
+def clear_screen() -> None:
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def handle_input(char: str):
+def print_options(
+        PAGE_INDEX,
+        COLUMN_INDEX,
+        rows,
+        columns,
+        data
+    ) -> None:
 
-    
-    pass
+    formatting = '\x1b[0;30;47m{}\x1b[0m'
+
+    output = 'rows {}-{} ({}) | cols {}-{} ({})  \t ↑↓←→ to scroll \t q: quit | f: sql \t' \
+                .format(
+                    (PAGE_INDEX*rows)+1,
+                    (PAGE_INDEX*rows+rows+1 if PAGE_INDEX*rows+rows+1 < len(data) else len(data)),
+                    len(data),
+                    (COLUMN_INDEX*columns)+1,
+                    (COLUMN_INDEX*columns+columns+1 if COLUMN_INDEX*columns+columns+1 < len(list(data.columns)) else len(list(data.columns))),
+                    len(list(data.columns)))
+
+    print(formatting.format(output))
+
+
+
 
 @click.command()
 @click.option('--fname', '--f', required=True, help='input file')
 def main(fname):
-    cls()
+    clear_screen()
+
+    print('Loading')
 
     data = read(fname)
     
-
     PAGE_INDEX = 0
     COLUMN_INDEX = 0
 
     while True:
-        cls()
-        #breakpoint()
-        rows, columns = get_dimensions(data, column_index=COLUMN_INDEX)
-
-        #breakpoint()
-        df = data.iloc[:, COLUMN_INDEX:(COLUMN_INDEX + columns)]
         
-        display_page(df[(PAGE_INDEX * rows):].head(rows))
+        
+        rows, columns = get_dimensions(data, column_index=COLUMN_INDEX)
+        
+        df = data[(PAGE_INDEX * rows):].head(rows)
 
-        print('\x1b[0;30;47m' + 'rows {}-{} ({}) \t ↑↓←→ to scroll \t\t q: quit \t f: sql \t'.format((PAGE_INDEX*rows)+1, (PAGE_INDEX*rows+rows+1 if PAGE_INDEX*rows+rows+1 < len(data) else len(data)), len(data)) + '\x1b[0m')
+        rows, columns = get_dimensions(df, column_index=COLUMN_INDEX)
 
-        getch = char_input()
+        df = df.iloc[:, COLUMN_INDEX:(COLUMN_INDEX + columns)]
 
-        if getch == 'q':
+        display_page(df)
+        print_options(PAGE_INDEX, COLUMN_INDEX, rows, columns, data)
+
+        
+        key = char_input()
+
+        if key == 'q':
             break
 
-        if getch == 'B':
+        elif key == 'B':
             if (PAGE_INDEX + 1) * rows < len(data):
                 PAGE_INDEX += 1
 
-        if getch == 'A':
+        elif key == 'A':
             if PAGE_INDEX > 0:
                 PAGE_INDEX -= 1
 
-        if getch == 'D':
+        elif key == 'D':
             if COLUMN_INDEX > 0:
                 COLUMN_INDEX -= 1
 
-        if getch == 'C':
+        elif key == 'C':
             COLUMN_INDEX += 1
 
-        if getch == 'f':
+        elif key == 'f':
             sql_query= input('sql:')
             if sql_query is not None and sql_query.strip() != '':
                 data = query(sql_query)
 
-
-if __name__ == '__main__':
-
-    main()
+        
+        
