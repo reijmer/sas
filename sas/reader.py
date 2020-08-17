@@ -115,19 +115,17 @@ def print_options(
     num_cols = len(list(data.columns))
     num_rows = len(data)
 
-    output = 'rows {}-{} ({}) | cols {}-{} ({})  \t ↑↓←→ to scroll \t q: quit | f: sql \t' \
+    reset_option = '\t' if not queried else '| r: reset'
+
+    output = 'rows {}-{} ({}) | cols {}-{} ({})  \t ↑↓←→ to scroll \t q: quit | f: sql {}\t' \
                 .format(
                     (page_index*rows)+1,
                     (page_index*rows+rows+1 if page_index*rows+rows+1 < num_rows else num_rows),
                     num_rows,
                     (column_index)+1,
                     (column_index+columns+1 if column_index+columns+1 < num_cols else num_cols),
-                    num_cols)
-
-    #breakpoint()
-
-
-    refresh = '\t' if not queried else ' | r: reset'
+                    num_cols,
+                    reset_option)
 
     print(formatting.format(output))
 
@@ -184,6 +182,7 @@ def main(fname):
 
         elif key == 'r':
             data = query(f'select * from {table}')
+            queried = False
 
         elif key == 'f':
             sql_query= input('sql: ')
