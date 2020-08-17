@@ -131,7 +131,7 @@ def main(fname):
         
         display_page(df[(PAGE_INDEX * rows):].head(rows))
 
-        print('\x1b[0;30;47m' + 'rows {}-{} \t ↑↓←→ to scroll \t\t q: quit \t f: sql \t'.format((PAGE_INDEX*rows), (PAGE_INDEX*rows) + rows) + '\x1b[0m')
+        print('\x1b[0;30;47m' + 'rows {}-{} ({}) \t ↑↓←→ to scroll \t\t q: quit \t f: sql \t'.format((PAGE_INDEX*rows)+1, (PAGE_INDEX*rows+rows+1 if PAGE_INDEX*rows+rows+1 < len(data) else len(data)), len(data)) + '\x1b[0m')
 
         getch = char_input()
 
