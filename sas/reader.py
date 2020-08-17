@@ -17,9 +17,10 @@ def read(fname: str) -> pd.DataFrame:
 
     df = df.astype(str)
 
-    reg = register_temp_table(df, fname.replace('.sas7bdat', ''))
+    table = fname.replace('.sas7bdat', '')
+    reg = register_temp_table(df, table)
 
-    return df
+    return df, table
 
 
 def get_dimensions(data, column_index=0) -> tuple:
@@ -44,7 +45,7 @@ def get_dimensions(data, column_index=0) -> tuple:
     col_length = 0
     num_cols = 0
 
-    while col_length < width:
+    while col_length < width and num_cols < len(column_sizes):
         if col_length + column_sizes[num_cols] <= width:
             col_length += column_sizes[num_cols]
             num_cols += 1
@@ -101,27 +102,34 @@ def clear_screen() -> None:
 
 
 def print_options(
-        PAGE_INDEX,
-        COLUMN_INDEX,
+        page_index,
+        column_index,
         rows,
         columns,
-        data
+        data,
+        queried
     ) -> None:
 
     formatting = '\x1b[0;30;47m{}\x1b[0m'
 
+    num_cols = len(list(data.columns))
+    num_rows = len(data)
+
     output = 'rows {}-{} ({}) | cols {}-{} ({})  \t ↑↓←→ to scroll \t q: quit | f: sql \t' \
                 .format(
-                    (PAGE_INDEX*rows)+1,
-                    (PAGE_INDEX*rows+rows+1 if PAGE_INDEX*rows+rows+1 < len(data) else len(data)),
-                    len(data),
-                    (COLUMN_INDEX*columns)+1,
-                    (COLUMN_INDEX*columns+columns+1 if COLUMN_INDEX*columns+columns+1 < len(list(data.columns)) else len(list(data.columns))),
-                    len(list(data.columns)))
+                    (page_index*rows)+1,
+                    (page_index*rows+rows+1 if page_index*rows+rows+1 < num_rows else num_rows),
+                    num_rows,
+                    (column_index)+1,
+                    (column_index+columns+1 if column_index+columns+1 < num_cols else num_cols),
+                    num_cols)
+
+    #breakpoint()
+
+
+    refresh = '\t' if not queried else ' | r: reset'
 
     print(formatting.format(output))
-
-
 
 
 @click.command()
@@ -131,13 +139,14 @@ def main(fname):
 
     print('Loading')
 
-    data = read(fname)
+    data, table = read(fname)
     
     PAGE_INDEX = 0
     COLUMN_INDEX = 0
 
+    queried = False
+
     while True:
-        
         
         rows, columns = get_dimensions(data, column_index=COLUMN_INDEX)
         
@@ -148,7 +157,7 @@ def main(fname):
         df = df.iloc[:, COLUMN_INDEX:(COLUMN_INDEX + columns)]
 
         display_page(df)
-        print_options(PAGE_INDEX, COLUMN_INDEX, rows, columns, data)
+        print_options(PAGE_INDEX, COLUMN_INDEX, rows, columns, data, queried)
 
         
         key = char_input()
@@ -169,12 +178,18 @@ def main(fname):
                 COLUMN_INDEX -= 1
 
         elif key == 'C':
-            COLUMN_INDEX += 1
+            if COLUMN_INDEX+columns < len(list(data.columns)):
+                COLUMN_INDEX += 1
+            
+
+        elif key == 'r':
+            data = query(f'select * from {table}')
 
         elif key == 'f':
-            sql_query= input('sql:')
+            sql_query= input('sql: ')
             if sql_query is not None and sql_query.strip() != '':
                 data = query(sql_query)
+                queried = True
 
         
         
