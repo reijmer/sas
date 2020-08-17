@@ -5,6 +5,7 @@ import math
 import numpy as np
 import os
 import termios, sys , tty
+import click
 
 
 
@@ -12,6 +13,8 @@ def read(fname: str) -> pd.DataFrame:
 
     df = pd.read_sas(fname, format='sas7bdat', encoding='iso-8859-1')
     df = df.fillna('')
+
+    df = df.astype(str)
 
     return df
 
@@ -24,7 +27,7 @@ def get_dimensions(data, column_index=0) -> tuple:
     """
 
     ROW_SIZE = 3 # every row requires 3 lines.
-    COL_SIZE = 10 # every columns has 4 chars in formatting.
+    COL_SIZE = 6 # every columns has 4 chars in formatting.
     
     
     width, height = shutil.get_terminal_size((80, 20))
@@ -84,7 +87,7 @@ def display_page(data) -> None:
         header=list(data.columns))
 
 
-def char_input():
+def char_input() -> str:
    fd = sys.stdin.fileno()
    old_settings = termios.tcgetattr(fd)
    try:
@@ -95,14 +98,19 @@ def char_input():
    return ch
 
 
-def cls():
+def cls() -> None:
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def main():
-    cls()
+def handle_input(char: str):
 
-    fname = 'ae.sas7bdat'
+    
+    pass
+
+@click.command()
+@click.option('--fname', '--f', required=True, help='input file')
+def main(fname):
+    cls()
 
     data = read(fname)
     
@@ -120,13 +128,16 @@ def main():
         
         display_page(df[(PAGE_INDEX * rows):].head(rows))
 
+        print('rows {}-{} \t q: quit \t f: sql'.format((PAGE_INDEX*rows), (PAGE_INDEX*rows) + rows))
+
         getch = char_input()
 
         if getch == 'q':
             break
 
         if getch == 'B':
-            PAGE_INDEX += 1
+            if (PAGE_INDEX + 1) * rows < len(data):
+                PAGE_INDEX += 1
 
         if getch == 'A':
             if PAGE_INDEX > 0:
@@ -138,6 +149,14 @@ def main():
 
         if getch == 'C':
             COLUMN_INDEX += 1
+
+        if getch == 'f':
+            sql_query= input('sql:')
+            from dataframe_sql import register_temp_table, query
+            
+            register_temp_table(data, "ae")
+            
+            data = query(sql_query)
 
 
 if __name__ == '__main__':

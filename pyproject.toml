@@ -7,10 +7,9 @@ authors = ["Your Name <you@example.com>"]
 [tool.poetry.dependencies]
 python = "^3.7"
 click = "^7.1.2"
-tabulate = "^0.8.7"
-pandasgui = {git = "https://github.com/adamerose/pandasgui.git"}
 pandas = "1.0.5"
 termtables = "^0.2.2"
+dataframe_sql = "^0.2.0"
 
 [tool.poetry.dev-dependencies]
 
